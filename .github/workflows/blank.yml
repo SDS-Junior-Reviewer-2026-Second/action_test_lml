@@ -34,7 +34,8 @@ jobs:
         run: |
           echo Add other actions to build,
           echo test, and deploy your project.
-  Do: 
+  BurgerKing: 
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.1.0
