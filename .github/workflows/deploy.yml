@@ -1,0 +1,172 @@
+name: Maven CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------
+  # Build 1 -> Integration
+  # -------------------------
+  build-1:
+    name: build-1
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compile
+        run: mvn -B clean compile
+
+  integration:
+    name: ${{ matrix.name }}
+    needs: build-1
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: integration-1
+            command: mvn -B test
+          - name: integration-2
+            command: mvn -B verify
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
+
+  # -------------------------
+  # Build 2 -> Lint
+  # -------------------------
+  build-2:
+    name: build-2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Package
+        run: mvn -B -DskipTests package
+
+  lint:
+    name: lint
+    needs: build-2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Checkstyle 플러그인이 pom.xml에 설정되어 있어야 합니다.
+      - name: Run Checkstyle
+        run: mvn -B checkstyle:check
+
+  # -------------------------
+  # Build 3 -> Unit test matrix
+  # -------------------------
+  build-3:
+    name: build-3
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Validate
+        run: mvn -B validate
+
+  unit-test:
+    name: unit-test / Java ${{ matrix.java }}
+    needs: build-3
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['17', '21', '25']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Unit Test
+        run: mvn -B test
+
+  # -------------------------
+  # Deploy
+  # integration + lint + unit-test가 모두 성공해야 실행
+  # -------------------------
+  deploy:
+    name: deploy
+    needs:
+      - integration
+      - lint
+      - unit-test
+
+    # PR에서는 배포하지 않고 main push에서만 배포
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy
+        run: |
+          echo "All checks passed."
+          echo "Deploy your application here."
