@@ -34,3 +34,17 @@ jobs:
         run: |
           echo Add other actions to build,
           echo test, and deploy your project.
+  Do: 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          # Version range or exact version of Python or PyPy to use, using SemVer's version range syntax. Reads from .python-version if unset.
+          python-version: "3.14" # optional
+          # File containing the Python version to use. Example: .python-version
+
+      - name: Run Burger-king script
+        run: python .github/scripts/burgerKing.py
